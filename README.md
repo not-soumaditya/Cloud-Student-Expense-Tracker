@@ -11,8 +11,8 @@ A cloud-based web application that helps students track daily expenses, manage b
 ```
 ┌──────────────────────┐       HTTPS/REST       ┌──────────────────────┐      SQL/TCP       ┌──────────────────────┐
 │    React Frontend    │  ◄─────────────────►   │   Express.js API     │  ◄──────────────►  │   PostgreSQL DB      │
-│  Firebase Hosting    │       JSON              │   Render (PaaS)      │    node-pg         │   Supabase (DBaaS)   │
-│  (Google Cloud CDN)  │                         │                      │                    │                      │
+│   Vercel (CDN)       │       JSON              │   Render (PaaS)      │    node-pg         │   Supabase (DBaaS)   │
+│                      │                         │                      │                    │                      │
 └──────────────────────┘                         └──────────────────────┘                    └──────────────────────┘
 ```
 
@@ -20,7 +20,7 @@ A cloud-based web application that helps students track daily expenses, manage b
 
 | Service | Provider | Purpose | Tier |
 |---------|----------|---------|------|
-| Firebase Hosting | Google Cloud | Frontend hosting (CDN) | Free (Spark) |
+| Vercel | Vercel | Frontend hosting (CDN) | Free |
 | Render | Render.com | Backend API hosting (PaaS) | Free |
 | Supabase | Supabase.com | PostgreSQL Database (DBaaS) | Free (500 MB) |
 
@@ -28,7 +28,7 @@ A cloud-based web application that helps students track daily expenses, manage b
 
 ## ✨ Features
 
-- **Dashboard** — Overview with spending summary cards and pie chart
+- **Dashboard** — Overview with spending summary cards and donut chart
 - **Expense Management** — Full CRUD: Add, view, edit, and delete expenses
 - **Budget Tracking** — Set monthly budgets per category with progress bars and over-budget alerts
 - **Reports & Analytics** — Interactive charts (pie chart by category, bar chart by month)
@@ -150,18 +150,14 @@ Visit `http://localhost:5173` in your browser.
 5. Start command: `node src/index.js`
 6. Add environment variables: `DATABASE_URL`, `PORT=10000`, `CLIENT_URL`
 
-### Deploy Frontend (Firebase Hosting)
-1. Go to [console.firebase.google.com](https://console.firebase.google.com)
-2. Create a new project (free Spark plan)
-3. Install Firebase CLI: `npm install -g firebase-tools`
-4. Login: `firebase login`
-5. Initialize: `firebase init hosting` (public directory = `dist`)
-6. Build the frontend:
-   ```bash
-   cd client
-   VITE_API_URL=https://your-render-url.onrender.com/api npm run build
-   ```
-7. Deploy: `firebase deploy --only hosting`
+### Deploy Frontend (Vercel)
+1. Sign up at [vercel.com](https://vercel.com)
+2. Import your GitHub repository
+3. Set the **Root Directory** to `client`
+4. Set the **Framework Preset** to `Vite`
+5. Add the environment variable: `VITE_API_URL=https://your-render-url.onrender.com/api`
+6. Click **Deploy** — Vercel will automatically build and deploy
+7. Every future `git push` will trigger an automatic redeployment
 
 ---
 
@@ -182,6 +178,7 @@ cloudapp/
 ├── client/                     # Frontend React app
 │   ├── package.json
 │   ├── index.html
+│   ├── vercel.json             # Vercel SPA routing config
 │   ├── vite.config.js
 │   └── src/
 │       ├── App.jsx             # Root component

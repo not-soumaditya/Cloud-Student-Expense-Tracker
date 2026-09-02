@@ -1,5 +1,13 @@
 import { useState, useEffect } from 'react';
-import { HiPlus, HiTrash, HiExclamationTriangle } from 'react-icons/hi2';
+import { 
+  HiPlus, 
+  HiTrash, 
+  HiExclamationTriangle,
+  HiCreditCard,
+  HiCalendar,
+  HiCheckCircle,
+  HiTag
+} from 'react-icons/hi2';
 import API from '../api/axios';
 import toast from 'react-hot-toast';
 
@@ -36,7 +44,7 @@ function BudgetPage() {
     e.preventDefault();
     try {
       await API.post('/budgets', { ...form, month: currentMonth });
-      toast.success('Budget set!');
+      toast.success('Budget set successfully!');
       setShowForm(false);
       setForm({ category_id: '', budget_limit: '', month: '' });
       loadData();
@@ -46,7 +54,7 @@ function BudgetPage() {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Delete this budget?')) return;
+    if (!window.confirm('Delete this budget target?')) return;
     try {
       await API.delete(`/budgets/${id}`);
       toast.success('Budget deleted');
@@ -59,7 +67,7 @@ function BudgetPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-2 border-violet-200 border-t-violet-600"></div>
       </div>
     );
   }
@@ -67,20 +75,33 @@ function BudgetPage() {
   const usedCategoryIds = budgets.map(b => b.category_id);
   const availableCategories = categories.filter(c => !usedCategoryIds.includes(c.id));
 
+  const inputClass = "w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:ring-2 focus:ring-violet-500/40 focus:border-violet-500 outline-none transition-all duration-200";
+
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
-        <h1 className="text-2xl font-bold text-gray-900">Budget Management</h1>
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white tracking-tight">
+            Budget Limits
+          </h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+            Set and monitor category-wise spending thresholds
+          </p>
+        </div>
         <div className="flex items-center gap-3">
-          <input
-            type="month"
-            value={currentMonth}
-            onChange={(e) => setCurrentMonth(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
-          />
+          <div className="flex items-center gap-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-xl shadow-sm">
+            <HiCalendar className="w-4 h-4 text-violet-500" />
+            <input
+              type="month"
+              value={currentMonth}
+              onChange={(e) => setCurrentMonth(e.target.value)}
+              className="bg-transparent text-sm text-slate-700 dark:text-slate-200 outline-none font-medium"
+            />
+          </div>
           <button
             onClick={() => setShowForm(!showForm)}
-            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm"
+            className="flex items-center gap-2 px-4 sm:px-5 py-2.5 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-xl hover:from-violet-700 hover:to-indigo-700 shadow-md shadow-violet-500/25 text-xs sm:text-sm font-semibold transition-all duration-200"
           >
             <HiPlus className="w-4 h-4" /> Set Budget
           </button>
@@ -89,40 +110,44 @@ function BudgetPage() {
 
       {/* Add Budget Form */}
       {showForm && (
-        <div className="bg-white rounded-xl shadow-sm border p-6">
-          <h2 className="text-lg font-semibold mb-4">Set New Budget</h2>
+        <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md rounded-2xl border border-slate-100 dark:border-slate-800 p-6 shadow-sm animate-in fade-in duration-200">
+          <h2 className="text-base font-bold text-slate-900 dark:text-white mb-4">Set Category Target</h2>
           <form onSubmit={handleSubmit} className="flex flex-wrap items-end gap-4">
             <div className="flex-1 min-w-[200px]">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 uppercase tracking-wide">
+                Category *
+              </label>
               <select
                 value={form.category_id}
                 onChange={(e) => setForm({ ...form, category_id: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                className={inputClass}
                 required
               >
                 <option value="">Select category</option>
                 {availableCategories.map((cat) => (
-                  <option key={cat.id} value={cat.id}>{cat.icon} {cat.name}</option>
+                  <option key={cat.id} value={cat.id}>{cat.name}</option>
                 ))}
               </select>
             </div>
             <div className="flex-1 min-w-[200px]">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Budget Limit (₹)</label>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 uppercase tracking-wide">
+                Budget Limit (₹) *
+              </label>
               <input
                 type="number"
                 step="0.01"
                 value={form.budget_limit}
                 onChange={(e) => setForm({ ...form, budget_limit: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                className={inputClass}
                 placeholder="5000"
                 required
               />
             </div>
             <button
               type="submit"
-              className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+              className="px-6 py-2.5 bg-violet-600 hover:bg-violet-700 text-white rounded-xl shadow-md shadow-violet-500/20 transition-all duration-200 font-semibold text-sm"
             >
-              Save
+              Save Target
             </button>
           </form>
         </div>
@@ -130,48 +155,92 @@ function BudgetPage() {
 
       {/* Budget Cards */}
       {budgets.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {budgets.map((budget) => {
             const percentage = budget.budget_limit > 0
               ? Math.min((budget.spent / budget.budget_limit) * 100, 100)
               : 0;
             const isOver = budget.spent > budget.budget_limit;
-            const barColor = isOver ? 'bg-red-500' : percentage > 80 ? 'bg-yellow-500' : 'bg-green-500';
+            const isWarning = !isOver && percentage > 80;
+
+            let barGradient = 'from-emerald-500 to-teal-500';
+            let ringColor = 'border-slate-100 dark:border-slate-800/80';
+            if (isOver) {
+              barGradient = 'from-rose-500 to-red-600';
+              ringColor = 'border-rose-300 dark:border-rose-900/60 bg-rose-50/20 dark:bg-rose-950/10';
+            } else if (isWarning) {
+              barGradient = 'from-amber-400 to-amber-500';
+            }
 
             return (
-              <div key={budget.id} className={`bg-white rounded-xl shadow-sm border p-6 ${isOver ? 'border-red-200 bg-red-50/30' : ''}`}>
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xl">{budget.category_icon || '📁'}</span>
-                    <h3 className="font-semibold text-gray-900">{budget.category_name}</h3>
+              <div
+                key={budget.id}
+                className={`bg-white/80 dark:bg-slate-900/80 backdrop-blur-md rounded-2xl border p-6 shadow-sm hover:shadow-md transition-all duration-200 ${ringColor}`}
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-sm"
+                      style={{ backgroundColor: budget.category_color || '#7c3aed' }}
+                    >
+                      <HiTag className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                        {budget.category_name}
+                      </h3>
+                      <p className="text-xs text-slate-400 dark:text-slate-500">
+                        Monthly target
+                      </p>
+                    </div>
                   </div>
+
                   <div className="flex items-center gap-2">
                     {isOver && (
-                      <span className="flex items-center gap-1 text-xs text-red-600 font-medium bg-red-100 px-2 py-1 rounded-full">
-                        <HiExclamationTriangle className="w-3 h-3" /> Over Budget!
+                      <span className="flex items-center gap-1 text-[11px] text-rose-600 dark:text-rose-400 font-semibold bg-rose-100 dark:bg-rose-950/60 px-2.5 py-1 rounded-full">
+                        <HiExclamationTriangle className="w-3.5 h-3.5" /> Over Budget
+                      </span>
+                    )}
+                    {isWarning && (
+                      <span className="flex items-center gap-1 text-[11px] text-amber-600 dark:text-amber-400 font-semibold bg-amber-100 dark:bg-amber-950/60 px-2.5 py-1 rounded-full">
+                        80%+ Used
+                      </span>
+                    )}
+                    {!isOver && !isWarning && (
+                      <span className="flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold bg-emerald-100 dark:bg-emerald-950/60 px-2.5 py-1 rounded-full">
+                        <HiCheckCircle className="w-3.5 h-3.5" /> On Track
                       </span>
                     )}
                     <button
                       onClick={() => handleDelete(budget.id)}
-                      className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                      className="p-1.5 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                      title="Delete Budget"
                     >
                       <HiTrash className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
-                <div className="flex justify-between text-sm mb-2">
-                  <span className="text-gray-600">₹{budget.spent.toLocaleString('en-IN')} spent</span>
-                  <span className="text-gray-500">of ₹{Number(budget.budget_limit).toLocaleString('en-IN')}</span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2.5">
+
+                {/* Progress Bar */}
+                <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2.5 mb-3 overflow-hidden">
                   <div
-                    className={`h-2.5 rounded-full transition-all ${barColor}`}
+                    className={`h-2.5 rounded-full bg-gradient-to-r ${barGradient} transition-all duration-500 ease-out`}
                     style={{ width: `${percentage}%` }}
-                  ></div>
+                  />
                 </div>
-                <p className="text-xs text-gray-500 mt-2">
+
+                {/* Stats */}
+                <div className="flex justify-between items-center text-xs">
+                  <span className={`font-semibold ${isOver ? 'text-rose-600 dark:text-rose-400' : 'text-slate-700 dark:text-slate-300'}`}>
+                    ₹{budget.spent.toLocaleString('en-IN')} spent
+                  </span>
+                  <span className="text-slate-400 dark:text-slate-500 font-medium">
+                    Limit: ₹{Number(budget.budget_limit).toLocaleString('en-IN')}
+                  </span>
+                </div>
+                <p className={`text-[11px] mt-1.5 ${isOver ? 'text-rose-500 font-medium' : 'text-slate-400 dark:text-slate-500'}`}>
                   {isOver
-                    ? `₹${(budget.spent - Number(budget.budget_limit)).toLocaleString('en-IN')} over budget`
+                    ? `₹${(budget.spent - Number(budget.budget_limit)).toLocaleString('en-IN')} exceeded`
                     : `₹${(Number(budget.budget_limit) - budget.spent).toLocaleString('en-IN')} remaining`
                   }
                 </p>
@@ -180,13 +249,14 @@ function BudgetPage() {
           })}
         </div>
       ) : (
-        <div className="bg-white rounded-xl shadow-sm border p-12 text-center">
-          <p className="text-gray-400 mb-4">No budgets set for this month.</p>
+        <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md rounded-2xl border border-slate-100 dark:border-slate-800 p-16 text-center shadow-sm">
+          <HiCreditCard className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto mb-2" />
+          <p className="text-slate-400 dark:text-slate-500 mb-3 font-medium text-sm">No monthly budgets configured for this month.</p>
           <button
             onClick={() => setShowForm(true)}
-            className="text-indigo-600 hover:text-indigo-700 text-sm font-medium"
+            className="text-violet-600 dark:text-violet-400 hover:underline text-xs font-semibold"
           >
-            + Set your first budget
+            + Set your first budget limit
           </button>
         </div>
       )}
