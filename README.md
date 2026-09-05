@@ -1,4 +1,4 @@
-# 💰 Student Expense Tracker
+# Student Expense Tracker
 
 **BACSE344 — Cloud Infrastructure and Architecture | Digital Assignment**
 
@@ -6,12 +6,12 @@ A cloud-based web application that helps students track daily expenses, manage b
 
 ---
 
-## 🏗️ System Architecture
+## System Architecture
 
 ```
-┌──────────────────────┐       HTTPS/REST       ┌──────────────────────┐      SQL/TCP       ┌──────────────────────┐
-│    React Frontend    │  ◄─────────────────►   │   Express.js API     │  ◄──────────────►  │   PostgreSQL DB      │
-│   Vercel (CDN)       │       JSON              │   Render (PaaS)      │    node-pg         │   Supabase (DBaaS)   │
+┌──────────────────────┐       HTTPS/REST        ┌──────────────────────┐      SQL/TCP       ┌──────────────────────┐
+│    React Frontend    │  ◄─────────────────►    │   Express.js API     │  ◄──────────────►  │   PostgreSQL DB      │
+│   Vercel (CDN)       │         JSON            │   Render (PaaS)      │      node-pg       │   Supabase (DBaaS)   │
 │                      │                         │                      │                    │                      │
 └──────────────────────┘                         └──────────────────────┘                    └──────────────────────┘
 ```
@@ -65,7 +65,7 @@ categories (1) ──── (N) budgets
 
 ---
 
-## 🔌 REST API Endpoints
+## REST API Endpoints
 
 ### Expenses (`/api/expenses`)
 | Method | Endpoint | Description |
@@ -96,55 +96,17 @@ categories (1) ──── (N) budgets
 
 ---
 
-## 🚀 Local Development Setup
-
-### Prerequisites
-- Node.js 18+ installed
-- A Supabase account (free) with a project created
-
-### 1. Clone the repository
-```bash
-git clone <your-repo-url>
-cd cloudapp
-```
-
-### 2. Set up the database
-1. Go to [supabase.com](https://supabase.com) → create a project
-2. Open the SQL Editor
-3. Copy and run the contents of `server/schema.sql`
-
-### 3. Start the backend
-```bash
-cd server
-cp .env.example .env
-# Edit .env and add your Supabase DATABASE_URL
-npm install
-npm run dev
-```
-
-### 4. Start the frontend
-```bash
-cd client
-npm install
-npm run dev
-```
-
-### 5. Open the app
-Visit `http://localhost:5173` in your browser.
-
----
-
 ## ☁️ Cloud Deployment
 
 ### Deploy Database (Supabase)
 1. Sign up at [supabase.com](https://supabase.com)
-2. Create a new project → select a region
+2. Create a new project → select a region (Singapore)
 3. Run `server/schema.sql` in the SQL Editor
 4. Copy the connection string from Settings → Database
 
 ### Deploy Backend (Render)
 1. Sign up at [render.com](https://render.com)
-2. Create a new **Web Service** → connect your GitHub repo
+2. Create a new **Web Service** → connect GitHub repo
 3. Root directory: `server`
 4. Build command: `npm install`
 5. Start command: `node src/index.js`
