@@ -7,7 +7,8 @@ import {
   HiSun, 
   HiMoon, 
   HiComputerDesktop, 
-  HiBanknotes 
+  HiBanknotes,
+  HiInformationCircle
 } from 'react-icons/hi2';
 import { useTheme } from './ThemeProvider';
 
@@ -34,7 +35,8 @@ function Navbar() {
       <div className="h-0.5 bg-gradient-to-r from-violet-600 via-indigo-500 to-fuchsia-500" />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16 items-center">
-          <div className="flex items-center">
+          {/* Logo Heading + About Button */}
+          <div className="flex items-center gap-2.5 sm:gap-3.5">
             <Link to="/" className="flex items-center gap-2.5 group">
               <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-violet-600 to-indigo-500 flex items-center justify-center text-white shadow-md shadow-violet-500/25 group-hover:scale-105 transition-transform duration-200">
                 <HiBanknotes className="w-5 h-5" />
@@ -42,6 +44,19 @@ function Navbar() {
               <span className="text-lg font-bold tracking-tight bg-gradient-to-r from-violet-600 to-indigo-600 dark:from-violet-300 dark:via-indigo-200 dark:to-white bg-clip-text text-transparent group-hover:from-violet-700 group-hover:to-indigo-700 dark:group-hover:from-violet-200 dark:group-hover:to-white transition-all">
                 ExpenseTracker
               </span>
+            </Link>
+
+            <Link
+              to="/about"
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all duration-200 ${
+                location.pathname === '/about'
+                  ? 'bg-violet-100 dark:bg-violet-500/25 text-violet-700 dark:text-violet-300 border border-violet-200 dark:border-violet-500/40 shadow-sm'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 bg-slate-100/80 dark:bg-slate-800/60 hover:bg-slate-200/80 dark:hover:bg-slate-800 border border-slate-200/60 dark:border-slate-700/60'
+              }`}
+              title="About this Project"
+            >
+              <HiInformationCircle className="w-4 h-4 text-violet-600 dark:text-violet-400" />
+              <span>About</span>
             </Link>
           </div>
 
