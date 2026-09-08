@@ -1,8 +1,8 @@
 import React from 'react';
-import { 
-  HiCloud, 
-  HiServerStack, 
-  HiCircleStack, 
+import {
+  HiCloud,
+  HiServerStack,
+  HiCircleStack,
   HiArrowLongRight
 } from 'react-icons/hi2';
 
@@ -12,21 +12,21 @@ export default function About() {
       title: 'Frontend',
       provider: 'Vercel',
       role: 'User Interface Delivery',
-      tech: 'React 18, Vite, Tailwind CSS, Recharts',
+      tech: 'React, Javascript, Vite, HTML/CSS',
       icon: HiCloud,
       color: 'from-violet-500 to-indigo-600',
       badge: 'Edge CDN',
       details: [
         'Single page application deployed on Vercel edge network for quick asset loading.',
         'Continuous deployment automatically builds and publishes code pushed to the repository.',
-        'Client-side navigation handled by React Router with single page rewrite rules.',
+        'Client-side navigation handled by React Router with single-page rewrite rules.',
       ]
     },
     {
       title: 'Backend',
       provider: 'Render',
       role: 'Application API Service',
-      tech: 'Node.js, Express.js, CORS, node-pg',
+      tech: 'Node.js, Express.js',
       icon: HiServerStack,
       color: 'from-indigo-500 to-cyan-600',
       badge: 'PaaS',
@@ -40,7 +40,7 @@ export default function About() {
       title: 'Database',
       provider: 'Supabase',
       role: 'Relational Data Storage',
-      tech: 'PostgreSQL 15, Connection Pooling, Indexes',
+      tech: 'PostgreSQL, Connection Pooling',
       icon: HiCircleStack,
       color: 'from-emerald-500 to-teal-600',
       badge: 'DBaaS',
@@ -70,7 +70,7 @@ export default function About() {
         </h1>
 
         <p className="mt-4 text-slate-600 dark:text-slate-300 leading-relaxed text-base sm:text-lg">
-          This cloud-based expense management platform was built for the Cloud Infrastructure and Architecture course (BACSE344) at VIT Chennai. It demonstrates the implementation of a multi-cloud system by separating the client interface, API server, and relational database across independent cloud platforms. The application allows students to track daily spending, define monthly category budgets, and analyze spending patterns through visual reports.
+          This cloud-based expense tracking platform was built for the Cloud Infrastructure and Architecture course (BACSE344) at VIT Chennai. It demonstrates the implementation of a multi-cloud system by separating the client interface, API server, and relational database across independent cloud platforms. The application allows students to track daily spending, define monthly category budgets, and analyze spending patterns through visual reports.
         </p>
 
         {/* Project Details */}
@@ -145,8 +145,8 @@ export default function About() {
         {/* Deep Dive Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {cloudSections.map((section, idx) => (
-            <div 
-              key={idx} 
+            <div
+              key={idx}
               className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md rounded-2xl border border-slate-100 dark:border-slate-800/80 p-6 shadow-sm hover:shadow-md transition-all flex flex-col"
             >
               <div className="flex items-center justify-between mb-4">

@@ -18,7 +18,7 @@ function Dashboard() {
   const [summary, setSummary] = useState(null);
   const [recentExpenses, setRecentExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
-  const { resolvedTheme } = useTheme();
+  const { theme } = useTheme();
 
   useEffect(() => {
     loadData();
@@ -74,7 +74,7 @@ function Dashboard() {
     },
   ];
 
-  const isDark = resolvedTheme === 'dark';
+  const isDark = theme === 'dark';
 
   return (
     <div className="space-y-8">

@@ -12,7 +12,7 @@ const CHART_COLORS = ['#7c3aed', '#2563eb', '#0891b2', '#059669', '#d97706', '#e
 function Reports() {
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
-  const { resolvedTheme } = useTheme();
+  const { theme } = useTheme();
 
   useEffect(() => {
     API.get('/expenses/stats/summary')
@@ -32,7 +32,7 @@ function Reports() {
   const categoryData = summary?.byCategory?.filter(c => c.total > 0) || [];
   const monthlyData = (summary?.byMonth || []).slice().reverse();
 
-  const isDark = resolvedTheme === 'dark';
+  const isDark = theme === 'dark';
 
   const tooltipStyle = {
     contentStyle: {

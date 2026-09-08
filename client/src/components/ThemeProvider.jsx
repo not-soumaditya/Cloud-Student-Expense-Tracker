@@ -4,64 +4,31 @@ const ThemeContext = createContext();
 
 export function ThemeProvider({ children }) {
   const [theme, setTheme] = useState(() => {
-    return localStorage.getItem('theme') || 'system';
-  });
-
-  const [resolvedTheme, setResolvedTheme] = useState(() => {
-    const saved = localStorage.getItem('theme') || 'system';
-    if (saved === 'dark') return 'dark';
-    if (saved === 'light') return 'light';
-    if (typeof window !== 'undefined') {
-      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-    }
-    return 'light';
+    const saved = localStorage.getItem('theme');
+    if (saved === 'light' || saved === 'dark') return saved;
+    // First visit: default to system preference
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   });
 
   useEffect(() => {
     const root = document.documentElement;
+    const isDark = theme === 'dark';
 
-    const applyTheme = (currentTheme) => {
-      let isDark = false;
-      if (currentTheme === 'system') {
-        isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      } else {
-        isDark = currentTheme === 'dark';
-      }
-
-      if (isDark) {
-        root.classList.add('dark');
-        root.style.colorScheme = 'dark';
-        setResolvedTheme('dark');
-      } else {
-        root.classList.remove('dark');
-        root.style.colorScheme = 'light';
-        setResolvedTheme('light');
-      }
-    };
-
-    applyTheme(theme);
-    localStorage.setItem('theme', theme);
-
-    if (theme === 'system') {
-      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-      const handleChange = (e) => {
-        if (e.matches) {
-          root.classList.add('dark');
-          root.style.colorScheme = 'dark';
-          setResolvedTheme('dark');
-        } else {
-          root.classList.remove('dark');
-          root.style.colorScheme = 'light';
-          setResolvedTheme('light');
-        }
-      };
-      mediaQuery.addEventListener('change', handleChange);
-      return () => mediaQuery.removeEventListener('change', handleChange);
+    if (isDark) {
+      root.classList.add('dark');
+      root.style.colorScheme = 'dark';
+    } else {
+      root.classList.remove('dark');
+      root.style.colorScheme = 'light';
     }
+
+    localStorage.setItem('theme', theme);
   }, [theme]);
 
+  const toggleTheme = () => setTheme(prev => prev === 'dark' ? 'light' : 'dark');
+
   return (
-    <ThemeContext.Provider value={{ theme, setTheme, resolvedTheme }}>
+    <ThemeContext.Provider value={{ theme, toggleTheme }}>
       {children}
     </ThemeContext.Provider>
   );
@@ -69,8 +36,6 @@ export function ThemeProvider({ children }) {
 
 export function useTheme() {
   const context = useContext(ThemeContext);
-  if (!context) {
-    throw new Error('useTheme must be used within a ThemeProvider');
-  }
+  if (!context) throw new Error('useTheme must be used within a ThemeProvider');
   return context;
 }

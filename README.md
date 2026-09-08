@@ -4,7 +4,7 @@
 
 A cloud-based web application that helps students track daily expenses, manage budgets, and visualize spending patterns. Built with modern web technologies and deployed across multiple cloud platforms.
 
----
+
 
 ## System Architecture
 
@@ -18,13 +18,11 @@ A cloud-based web application that helps students track daily expenses, manage b
 
 ### Cloud Services Used
 
-| Service | Provider | Purpose | Tier |
-|---------|----------|---------|------|
-| Vercel | Vercel | Frontend hosting (CDN) | Free |
-| Render | Render.com | Backend API hosting (PaaS) | Free |
-| Supabase | Supabase.com | PostgreSQL Database (DBaaS) | Free (500 MB) |
-
----
+| Service | Purpose | Tier |
+|---------|---------|------|
+| Vercel | Frontend hosting (CDN) | Free |
+| Render | Backend API hosting (PaaS) | Free |
+| Supabase | PostgreSQL Database (DBaaS) | Free (500 MB) |
 
 ## ✨ Features
 
@@ -35,7 +33,6 @@ A cloud-based web application that helps students track daily expenses, manage b
 - **Category Management** — 8 pre-configured categories with icons and colors
 - **Filtering** — Filter expenses by category and date range
 
----
 
 ## 🛠️ Tech Stack
 
@@ -44,9 +41,9 @@ A cloud-based web application that helps students track daily expenses, manage b
 | Frontend | React 18, Vite, Tailwind CSS, Recharts |
 | Backend | Node.js, Express.js |
 | Database | PostgreSQL (Supabase) |
-| API | RESTful JSON APIs (15 endpoints) |
+| API | RESTful JSON APIs |
 
----
+
 
 ## 📊 Database Design
 
@@ -63,7 +60,7 @@ categories (1) ──── (N) expenses
 categories (1) ──── (N) budgets
 ```
 
----
+
 
 ## REST API Endpoints
 
@@ -94,19 +91,18 @@ categories (1) ──── (N) budgets
 | PUT | `/api/budgets/:id` | Update budget |
 | DELETE | `/api/budgets/:id` | Delete budget |
 
----
 
 ## ☁️ Cloud Deployment
 
 ### Deploy Database (Supabase)
 1. Sign up at [supabase.com](https://supabase.com)
-2. Create a new project → select a region (Singapore)
+2. Create a new project > select a region (Singapore)
 3. Run `server/schema.sql` in the SQL Editor
 4. Copy the connection string from Settings → Database
 
 ### Deploy Backend (Render)
 1. Sign up at [render.com](https://render.com)
-2. Create a new **Web Service** → connect GitHub repo
+2. Create a new **Web Service** > connect GitHub repo
 3. Root directory: `server`
 4. Build command: `npm install`
 5. Start command: `node src/index.js`
@@ -116,12 +112,12 @@ categories (1) ──── (N) budgets
 1. Sign up at [vercel.com](https://vercel.com)
 2. Import your GitHub repository
 3. Set the **Root Directory** to `client`
-4. Set the **Framework Preset** to `Vite`
-5. Add the environment variable: `VITE_API_URL=https://your-render-url.onrender.com/api`
-6. Click **Deploy** — Vercel will automatically build and deploy
+4. Set the **Framework Preset** to `Vite` (pre-selected)
+5. Add the environment variable: `VITE_API_URL=https://[render-instance-url].onrender.com/api`
+6. Click **Deploy** > Vercel will automatically build and deploy
 7. Every future `git push` will trigger an automatic redeployment
 
----
+
 
 ## 📁 Project Structure
 
@@ -151,9 +147,11 @@ cloudapp/
 └── README.md
 ```
 
----
+
 
 ## 👤 Author
 
-**[Your Name]** — [Your Registration Number]
-BACSE344 — Cloud Infrastructure and Architecture
+Soumaditya Mukherjee - 25BCE1118\
+Student at VIT Chennai\
+Submitted as part of the course:\
+BACSE344 - Cloud Infrastructure and Architecture
