@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { HiXMark, HiTag, HiCalendar, HiCreditCard, HiChatBubbleBottomCenterText, HiCurrencyRupee } from 'react-icons/hi2';
+import { useState, useEffect, useCallback } from 'react';
+import { HiXMark, HiTag, HiCalendar, HiCreditCard, HiChatBubbleBottomCenterText, HiCurrencyRupee, HiExclamationTriangle, HiExclamationCircle } from 'react-icons/hi2';
 import API from '../api/axios';
 import toast from 'react-hot-toast';
 
@@ -13,6 +13,8 @@ function ExpenseForm({ expense, onClose, onSaved }) {
     payment_method: 'UPI',
   });
   const [loading, setLoading] = useState(false);
+  const [budgetWarning, setBudgetWarning] = useState({ category: null, overall: null });
+  const [showFutureConfirm, setShowFutureConfirm] = useState(false);
 
   useEffect(() => {
     API.get('/categories').then(res => setCategories(res.data)).catch(() => {});
@@ -27,12 +29,65 @@ function ExpenseForm({ expense, onClose, onSaved }) {
     }
   }, [expense]);
 
+  // Budget check — runs when category, amount, or date changes
+  const checkBudget = useCallback(async () => {
+    if (!form.category_id || !form.amount || !form.date) {
+      setBudgetWarning({ category: null, overall: null });
+      return;
+    }
+
+    const month = form.date.slice(0, 7);
+    try {
+      const res = await API.get('/expenses/stats/budget-check', {
+        params: { category_id: form.category_id, month }
+      });
+      const { category, overall } = res.data;
+      const newAmount = parseFloat(form.amount) || 0;
+
+      let catWarning = null;
+      if (category.budget_limit !== null) {
+        const projectedSpent = category.spent + newAmount;
+        if (projectedSpent > category.budget_limit) {
+          const overBy = projectedSpent - category.budget_limit;
+          catWarning = `This will put you ₹${overBy.toLocaleString('en-IN')} over your ${category.category_name} budget (₹${category.spent.toLocaleString('en-IN')} + ₹${newAmount.toLocaleString('en-IN')} / ₹${category.budget_limit.toLocaleString('en-IN')})`;
+        }
+      }
+
+      let overallWarning = null;
+      if (overall.budget_limit !== null) {
+        const projectedTotal = overall.total_spent + newAmount;
+        if (projectedTotal > overall.budget_limit) {
+          const overBy = projectedTotal - overall.budget_limit;
+          overallWarning = `This will exceed your monthly budget by ₹${overBy.toLocaleString('en-IN')} (₹${overall.total_spent.toLocaleString('en-IN')} + ₹${newAmount.toLocaleString('en-IN')} / ₹${overall.budget_limit.toLocaleString('en-IN')})`;
+        }
+      }
+
+      setBudgetWarning({ category: catWarning, overall: overallWarning });
+    } catch {
+      // Silently fail — budget check is informational
+    }
+  }, [form.category_id, form.amount, form.date]);
+
+  useEffect(() => {
+    const timer = setTimeout(checkBudget, 400); // debounce 400ms
+    return () => clearTimeout(timer);
+  }, [checkBudget]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.amount || !form.date) {
       toast.error('Amount and date are required');
       return;
     }
+
+    // Future date check
+    const today = new Date().toISOString().split('T')[0];
+    if (form.date > today && !showFutureConfirm) {
+      setShowFutureConfirm(true);
+      return;
+    }
+
+    setShowFutureConfirm(false);
     setLoading(true);
     try {
       if (expense) {
@@ -72,6 +127,57 @@ function ExpenseForm({ expense, onClose, onSaved }) {
             <HiXMark className="w-5 h-5" />
           </button>
         </div>
+
+        {/* Future Date Confirmation Dialog */}
+        {showFutureConfirm && (
+          <div className="mx-6 mt-4 p-4 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-xl animate-in fade-in duration-200">
+            <div className="flex items-start gap-3">
+              <HiExclamationCircle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">Future Date Detected</p>
+                <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                  The date you selected ({new Date(form.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}) is in the future. Are you sure?
+                </p>
+                <div className="flex gap-2 mt-3">
+                  <button
+                    onClick={() => setShowFutureConfirm(false)}
+                    className="px-3 py-1.5 text-xs font-semibold border border-amber-300 dark:border-amber-700 rounded-lg text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors"
+                  >
+                    Go Back
+                  </button>
+                  <button
+                    onClick={handleSubmit}
+                    className="px-3 py-1.5 text-xs font-semibold bg-amber-500 hover:bg-amber-600 text-white rounded-lg transition-colors"
+                  >
+                    Yes, Save Anyway
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Budget Warnings */}
+        {(budgetWarning.category || budgetWarning.overall) && (
+          <div className="mx-6 mt-4 space-y-2">
+            {budgetWarning.category && (
+              <div className="flex items-start gap-2.5 p-3 bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800 rounded-xl animate-in fade-in duration-200">
+                <HiExclamationTriangle className="w-4 h-4 text-rose-500 flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-rose-700 dark:text-rose-300 font-medium leading-relaxed">
+                  {budgetWarning.category}
+                </p>
+              </div>
+            )}
+            {budgetWarning.overall && (
+              <div className="flex items-start gap-2.5 p-3 bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800 rounded-xl animate-in fade-in duration-200">
+                <HiExclamationTriangle className="w-4 h-4 text-orange-500 flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-orange-700 dark:text-orange-300 font-medium leading-relaxed">
+                  {budgetWarning.overall}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
@@ -129,7 +235,10 @@ function ExpenseForm({ expense, onClose, onSaved }) {
               <input
                 type="date"
                 value={form.date}
-                onChange={(e) => setForm({ ...form, date: e.target.value })}
+                onChange={(e) => {
+                  setForm({ ...form, date: e.target.value });
+                  setShowFutureConfirm(false);
+                }}
                 className={inputClass}
                 required
               />

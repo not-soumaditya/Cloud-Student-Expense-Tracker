@@ -5,6 +5,7 @@ require('dotenv').config();
 const expenseRoutes = require('./routes/expenseRoutes');
 const categoryRoutes = require('./routes/categoryRoutes');
 const budgetRoutes = require('./routes/budgetRoutes');
+const monthlyBudgetRoutes = require('./routes/monthlyBudgetRoutes');
 const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
@@ -21,6 +22,7 @@ app.use(express.json());
 app.use('/api/expenses', expenseRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/budgets', budgetRoutes);
+app.use('/api/monthly-budgets', monthlyBudgetRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

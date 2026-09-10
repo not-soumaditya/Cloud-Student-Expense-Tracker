@@ -12,6 +12,40 @@ router.get('/stats/summary', async (req, res, next) => {
   }
 });
 
+// GET /api/expenses/stats/by-payment-method
+router.get('/stats/by-payment-method', async (req, res, next) => {
+  try {
+    const data = await ExpenseModel.getPaymentMethodBreakdown();
+    res.json(data);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/expenses/stats/by-day-of-week
+router.get('/stats/by-day-of-week', async (req, res, next) => {
+  try {
+    const data = await ExpenseModel.getDayOfWeekBreakdown();
+    res.json(data);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/expenses/stats/budget-check?category_id=X&month=YYYY-MM
+router.get('/stats/budget-check', async (req, res, next) => {
+  try {
+    const { category_id, month } = req.query;
+    if (!category_id || !month) {
+      return res.status(400).json({ error: 'category_id and month are required' });
+    }
+    const data = await ExpenseModel.getBudgetCheck(category_id, month);
+    res.json(data);
+  } catch (err) {
+    next(err);
+  }
+});
+
 // GET /api/expenses
 router.get('/', async (req, res, next) => {
   try {
