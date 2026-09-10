@@ -1,8 +1,0 @@
-Add budget warnings, PDF export, overall budgets, and new reports
-
-> Overall monthly budget (set total spending limit)
-> Budget exceeded warnings shown in Add Expense dialog
-> Future date confirmation dialog before saving expenses
-> PDF export button on Reports page
-> Payment method breakdown pie chart
-> Day-of-week spending bar chart
