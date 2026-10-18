@@ -101,7 +101,7 @@ function BudgetPage() {
       toast.success('Budget deleted');
       loadData();
     } catch (err) {
-      toast.error('Failed to delete budget');
+      toast.error(err.response?.data?.error || 'Failed to delete budget');
     }
   };
 

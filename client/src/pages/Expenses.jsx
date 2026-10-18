@@ -81,7 +81,7 @@ export default function Expenses() {
       toast.success('Expense deleted');
       loadData();
     } catch (err) {
-      toast.error('Failed to delete expense');
+      toast.error(err.response?.data?.error || 'Failed to delete expense');
     }
   };
 
