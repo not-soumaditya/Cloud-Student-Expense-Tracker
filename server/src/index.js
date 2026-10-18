@@ -6,6 +6,7 @@ const expenseRoutes = require('./routes/expenseRoutes');
 const categoryRoutes = require('./routes/categoryRoutes');
 const budgetRoutes = require('./routes/budgetRoutes');
 const monthlyBudgetRoutes = require('./routes/monthlyBudgetRoutes');
+const authRoutes = require('./routes/authRoutes');
 const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
@@ -19,19 +20,25 @@ app.use(cors({
 app.use(express.json());
 
 // API Routes
+app.use('/api/auth', authRoutes);
 app.use('/api/expenses', expenseRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/budgets', budgetRoutes);
 app.use('/api/monthly-budgets', monthlyBudgetRoutes);
 
-// Health check endpoint
+// Health check endpoint (includes INSTANCE_ID for load balancer verification)
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', message: 'Expense Tracker API is running', timestamp: new Date().toISOString() });
+  res.json({
+    status: 'ok',
+    instance: process.env.INSTANCE_ID || 'default',
+    message: 'Expense Tracker API is running',
+    timestamp: new Date().toISOString()
+  });
 });
 
 // Global error handler
 app.use(errorHandler);
 
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`[${process.env.INSTANCE_ID || 'default'}] Server running on port ${PORT}`);
 });

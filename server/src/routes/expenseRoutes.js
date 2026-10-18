@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const ExpenseModel = require('../models/expenseModel');
+const { authenticate, authorize } = require('../middleware/auth');
 
 // GET /api/expenses/stats/summary — must be before /:id
 router.get('/stats/summary', async (req, res, next) => {
@@ -86,8 +87,8 @@ router.post('/', async (req, res, next) => {
   }
 });
 
-// PUT /api/expenses/:id
-router.put('/:id', async (req, res, next) => {
+// PUT /api/expenses/:id (Protected: supervisor/admin only)
+router.put('/:id', authenticate, authorize('supervisor', 'admin'), async (req, res, next) => {
   try {
     const { amount, description, category_id, date, payment_method } = req.body;
     const expense = await ExpenseModel.update(req.params.id, { amount, description, category_id, date, payment_method });
@@ -98,8 +99,8 @@ router.put('/:id', async (req, res, next) => {
   }
 });
 
-// DELETE /api/expenses/:id
-router.delete('/:id', async (req, res, next) => {
+// DELETE /api/expenses/:id (Protected: supervisor/admin only)
+router.delete('/:id', authenticate, authorize('supervisor', 'admin'), async (req, res, next) => {
   try {
     const expense = await ExpenseModel.delete(req.params.id);
     if (!expense) return res.status(404).json({ error: 'Expense not found' });

@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const BudgetModel = require('../models/budgetModel');
+const { authenticate, authorize } = require('../middleware/auth');
 
 // GET /api/budgets
 router.get('/', async (req, res, next) => {
@@ -37,8 +38,8 @@ router.post('/', async (req, res, next) => {
   }
 });
 
-// PUT /api/budgets/:id
-router.put('/:id', async (req, res, next) => {
+// PUT /api/budgets/:id (Protected: supervisor/admin only)
+router.put('/:id', authenticate, authorize('supervisor', 'admin'), async (req, res, next) => {
   try {
     const { category_id, budget_limit, month } = req.body;
     const budget = await BudgetModel.update(req.params.id, { category_id, budget_limit, month });
@@ -49,8 +50,8 @@ router.put('/:id', async (req, res, next) => {
   }
 });
 
-// DELETE /api/budgets/:id
-router.delete('/:id', async (req, res, next) => {
+// DELETE /api/budgets/:id (Protected: supervisor/admin only)
+router.delete('/:id', authenticate, authorize('supervisor', 'admin'), async (req, res, next) => {
   try {
     const budget = await BudgetModel.delete(req.params.id);
     if (!budget) return res.status(404).json({ error: 'Budget not found' });
