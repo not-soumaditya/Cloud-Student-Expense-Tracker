@@ -124,7 +124,13 @@ export default function LandingAuth() {
       setTotpCode('');
       setStep('mfa_setup');
     } catch (err) {
-      toast.error(err.response?.data?.error || err.message || 'Registration failed.');
+      const errMsg = err.response?.data?.error || err.message || 'Registration failed.';
+      if (errMsg.toLowerCase().includes('already exists') || err.response?.status === 409) {
+        toast.error('Account already exists for this email. Switched to Sign In!');
+        setTab('login');
+      } else {
+        toast.error(errMsg);
+      }
     } finally {
       setLoading(false);
     }
@@ -427,20 +433,31 @@ export default function LandingAuth() {
               </form>
             ) : (
               /* Normal TOTP Code Verification */
-              <form onSubmit={handleMfaVerify} className="space-y-5 text-center">
+              <form onSubmit={handleMfaVerify} className="space-y-4 text-center">
                 <div className="w-14 h-14 mx-auto rounded-2xl bg-gradient-to-tr from-violet-600 to-indigo-500 text-white flex items-center justify-center shadow-lg shadow-violet-500/30">
                   <HiKey className="w-7 h-7" />
                 </div>
 
                 <div>
                   <span className="text-[11px] font-bold uppercase tracking-wider text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-950/50 px-2.5 py-0.5 rounded-full border border-violet-200/50 dark:border-violet-800/40">
-                    Two-Factor Authentication
+                    Step 2: Sign-In Verification
                   </span>
                   <h2 className="text-lg font-bold text-slate-900 dark:text-white mt-2">
-                    Google Authenticator Code
+                    Enter Google Authenticator Code
                   </h2>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                    Open <strong>Google Authenticator</strong> on your phone and enter the 6-digit code for <strong>StudentExpenseTracker</strong> (time-sensitive)
+                    Open <strong>Google Authenticator</strong> on your phone and enter the 6-digit code for <strong>StudentExpenseTracker</strong>.
+                  </p>
+                </div>
+
+                {/* Helpful clarification banner */}
+                <div className="bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200/60 dark:border-emerald-800/40 rounded-xl p-2.5 text-[11px] text-emerald-800 dark:text-emerald-300 text-left">
+                  <p className="font-semibold flex items-center gap-1.5">
+                    <HiShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>2FA Setup is already completed</span>
+                  </p>
+                  <p className="mt-0.5 text-slate-600 dark:text-slate-400">
+                    Do <strong>NOT</strong> scan a new QR code. Use the 6-digit number currently showing in your Google Authenticator app.
                   </p>
                 </div>
 
@@ -479,7 +496,7 @@ export default function LandingAuth() {
                 {/* Emergency Unlock Helper */}
                 <div className="pt-3 border-t border-slate-100 dark:border-slate-800 text-center space-y-2">
                   <p className="text-[11px] text-slate-400 dark:text-slate-500">
-                    ⏱️ Make sure your phone's clock is set to <strong>Automatic / Network Time</strong>.
+                    ⏱️ Make sure your phone's clock is set to <strong>Automatic / Network Time</strong>. If you have multiple entries in Authenticator, delete the older ones to avoid confusion.
                   </p>
                   <button
                     type="button"

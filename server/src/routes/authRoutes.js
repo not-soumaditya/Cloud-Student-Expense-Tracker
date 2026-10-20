@@ -80,7 +80,7 @@ router.post('/login', async (req, res, next) => {
         message: 'MFA verification required',
         mfa_required: true,
         partial_token: partialToken,
-        user: { id: user.id, email: user.email, name: user.name, role: user.role }
+        user: { id: user.id, email: user.email, name: user.name, role: user.role, mfa_enabled: true }
       });
     }
 
@@ -89,7 +89,7 @@ router.post('/login', async (req, res, next) => {
     res.json({
       message: 'Login successful',
       mfa_required: false,
-      user: { id: user.id, email: user.email, name: user.name, role: user.role },
+      user: { id: user.id, email: user.email, name: user.name, role: user.role, mfa_enabled: false },
       token
     });
   } catch (err) {
@@ -141,7 +141,7 @@ router.post('/verify-mfa', async (req, res, next) => {
 
     res.json({
       message: 'MFA verification successful',
-      user: { id: user.id, email: user.email, name: user.name, role: user.role },
+      user: { id: user.id, email: user.email, name: user.name, role: user.role, mfa_enabled: true },
       token: fullToken
     });
   } catch (err) {

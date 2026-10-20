@@ -69,7 +69,8 @@ export function AuthProvider({ children }) {
 
   // Complete login with user and token
   const completeAuth = (userData, userToken) => {
-    setUser(userData);
+    const finalUser = userData ? { ...userData, mfa_enabled: Boolean(userData.mfa_enabled) } : null;
+    setUser(finalUser);
     setToken(userToken);
   };
 
@@ -77,12 +78,13 @@ export function AuthProvider({ children }) {
   const register = async ({ name, email, password, role = 'student', autoLogin = true }) => {
     try {
       const res = await API.post('/auth/register', { name, email, password, role });
+      const regUser = { ...res.data.user, mfa_enabled: Boolean(res.data.user?.mfa_enabled) };
       if (autoLogin) {
-        setUser(res.data.user);
+        setUser(regUser);
         setToken(res.data.token);
       }
       return {
-        user: res.data.user,
+        user: regUser,
         token: res.data.token,
         isLiveApi: true
       };
@@ -131,13 +133,14 @@ export function AuthProvider({ children }) {
         return {
           mfaRequired: true,
           partialToken: res.data.partial_token,
-          user: res.data.user,
+          user: { ...res.data.user, mfa_enabled: true },
           isLiveApi: true
         };
       }
-      setUser(res.data.user);
+      const finalUser = { ...res.data.user, mfa_enabled: Boolean(res.data.user?.mfa_enabled) };
+      setUser(finalUser);
       setToken(res.data.token);
-      return { mfaRequired: false, user: res.data.user, isLiveApi: true };
+      return { mfaRequired: false, user: finalUser, isLiveApi: true };
     } catch (err) {
       if (!err.response || err.code === 'ERR_NETWORK') {
         const localUsers = getLocalUsers();
@@ -166,7 +169,7 @@ export function AuthProvider({ children }) {
           return {
             mfaRequired: true,
             partialToken: `local_partial_${found.id}`,
-            user: found,
+            user: { ...found, mfa_enabled: true },
             secret: found.mfa_secret,
             isLiveApi: false
           };
@@ -190,9 +193,10 @@ export function AuthProvider({ children }) {
         partial_token: partialToken,
         totp_code: cleanedCode,
       });
-      setUser(res.data.user);
+      const verifiedUser = { ...res.data.user, mfa_enabled: true };
+      setUser(verifiedUser);
       setToken(res.data.token);
-      return res.data;
+      return { ...res.data, user: verifiedUser };
     } catch (err) {
       if (!err.response || err.code === 'ERR_NETWORK' || partialToken?.startsWith('local_partial_')) {
         const localUsers = getLocalUsers();
@@ -211,11 +215,12 @@ export function AuthProvider({ children }) {
         }
 
         const fullToken = `demo_jwt_${userObj ? userObj.id : Date.now()}_${Date.now()}`;
-        const activeUser = userObj || {
-          id: Date.now(),
-          email: 'student@vit.ac.in',
-          name: 'Student User',
-          role: 'student',
+        const activeUser = {
+          ...(userObj || {}),
+          id: userObj ? userObj.id : (userId || Date.now()),
+          email: userObj?.email || 'student@vit.ac.in',
+          name: userObj?.name || 'Student User',
+          role: userObj?.role || 'student',
           mfa_enabled: true
         };
         setUser(activeUser);

@@ -35,10 +35,33 @@ CREATE TABLE IF NOT EXISTS budgets (
     UNIQUE(category_id, month)
 );
 
+-- Create overall monthly budgets table
+CREATE TABLE IF NOT EXISTS monthly_budgets (
+    id              SERIAL PRIMARY KEY,
+    amount          DECIMAL(10,2) NOT NULL,
+    month           VARCHAR(7) NOT NULL UNIQUE,
+    created_at      TIMESTAMP DEFAULT NOW(),
+    updated_at      TIMESTAMP DEFAULT NOW()
+);
+
+-- Create users table (with Google Authenticator TOTP 2FA fields)
+CREATE TABLE IF NOT EXISTS users (
+    id              SERIAL PRIMARY KEY,
+    email           VARCHAR(255) NOT NULL UNIQUE,
+    password        VARCHAR(255) NOT NULL,
+    name            VARCHAR(100) NOT NULL,
+    role            VARCHAR(20) DEFAULT 'student',
+    mfa_enabled     BOOLEAN DEFAULT FALSE,
+    mfa_secret      VARCHAR(64) DEFAULT NULL,
+    created_at      TIMESTAMP DEFAULT NOW(),
+    updated_at      TIMESTAMP DEFAULT NOW()
+);
+
 -- Create indexes for performance
 CREATE INDEX IF NOT EXISTS idx_expenses_date ON expenses(date);
 CREATE INDEX IF NOT EXISTS idx_expenses_category ON expenses(category_id);
 CREATE INDEX IF NOT EXISTS idx_budgets_month ON budgets(month);
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 
 -- =============================================
 -- Seed Data - Default Categories

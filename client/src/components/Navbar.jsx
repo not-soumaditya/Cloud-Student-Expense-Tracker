@@ -132,20 +132,20 @@ function Navbar() {
                       type="button"
                       onClick={() => openAuthModal('mfa_status')}
                       title="Two-Factor Authentication is Active with Google Authenticator — click for details"
-                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-xs font-semibold hover:bg-emerald-100 transition shadow-sm"
+                      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-xs font-semibold hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition shadow-sm"
                     >
                       <HiShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                      <span className="hidden md:inline">2FA Active</span>
+                      <span>2FA Active</span>
                     </button>
                   ) : (
                     <button
                       type="button"
                       onClick={() => openAuthModal('mfa_setup')}
-                      title="Click to set up Google Authenticator (TOTP)"
+                      title="Two-Factor Authentication is currently not enabled. Click to set up Google Authenticator (TOTP)."
                       className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-800 text-xs font-semibold hover:bg-amber-100 dark:hover:bg-amber-900/50 transition shadow-sm"
                     >
                       <HiShieldCheck className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                      <span className="font-bold">Setup 2FA</span>
+                      <span>Setup 2FA</span>
                     </button>
                   )}
 
