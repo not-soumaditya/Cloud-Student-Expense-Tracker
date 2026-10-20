@@ -59,10 +59,10 @@ export async function generateTOTPCode(secret, counter) {
   return code.toString().padStart(6, '0');
 }
 
-// Verify a 6-digit TOTP code against a secret (with +/- 1 step / 30s window drift allowance)
-export async function verifyTOTPCode(token, secret, window = 1) {
+// Verify a 6-digit TOTP code against a secret (generous +/- 2 steps / 60s window drift allowance)
+export async function verifyTOTPCode(token, secret, window = 2) {
   if (!token || !secret) return false;
-  const cleanedToken = token.toString().trim().replace(/\s+/g, '');
+  const cleanedToken = token.toString().trim().replace(/[\s-]/g, '');
   if (cleanedToken.length !== 6) return false;
 
   const currentStep = Math.floor(Date.now() / 1000 / 30);

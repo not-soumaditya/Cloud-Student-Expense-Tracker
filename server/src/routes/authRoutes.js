@@ -5,6 +5,9 @@ const qrcode = require('qrcode');
 const UserModel = require('../models/userModel');
 const { authenticate } = require('../middleware/auth');
 
+// Allow +/- 2 time steps (+/- 60 seconds) to tolerate client-server clock drift
+authenticator.options = { window: [2, 2] };
+
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-key';
 
@@ -103,6 +106,11 @@ router.post('/verify-mfa', async (req, res, next) => {
       return res.status(400).json({ error: 'partial_token and totp_code are required.' });
     }
 
+    const cleanedCode = totp_code.toString().trim().replace(/\s+/g, '');
+    if (cleanedCode.length !== 6) {
+      return res.status(400).json({ error: 'TOTP code must be 6 digits.' });
+    }
+
     // Decode the partial token
     let decoded;
     try {
@@ -121,10 +129,10 @@ router.post('/verify-mfa', async (req, res, next) => {
       return res.status(400).json({ error: 'MFA is not configured for this user.' });
     }
 
-    // Verify the TOTP code
-    const isValid = authenticator.verify({ token: totp_code, secret: mfaData.mfa_secret });
+    // Verify the TOTP code (with window tolerance)
+    const isValid = authenticator.check(cleanedCode, mfaData.mfa_secret);
     if (!isValid) {
-      return res.status(401).json({ error: 'Invalid TOTP code. Please try again.' });
+      return res.status(401).json({ error: 'Invalid TOTP code. Please check Google Authenticator.' });
     }
 
     // Issue a full access token
@@ -173,12 +181,13 @@ router.post('/enable-mfa', authenticate, async (req, res, next) => {
       return res.status(400).json({ error: 'totp_code is required.' });
     }
 
+    const cleanedCode = totp_code.toString().trim().replace(/\s+/g, '');
     const mfaData = await UserModel.getMfaSecret(req.user.id);
     if (!mfaData || !mfaData.mfa_secret) {
       return res.status(400).json({ error: 'MFA setup not initiated. Call /setup-mfa first.' });
     }
 
-    const isValid = authenticator.verify({ token: totp_code, secret: mfaData.mfa_secret });
+    const isValid = authenticator.check(cleanedCode, mfaData.mfa_secret);
     if (!isValid) {
       return res.status(401).json({ error: 'Invalid TOTP code. MFA not enabled.' });
     }
@@ -188,6 +197,38 @@ router.post('/enable-mfa', authenticate, async (req, res, next) => {
     res.json({
       message: 'MFA enabled successfully!',
       user
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/auth/reset-mfa — Emergency 2FA reset using account password if locked out
+router.post('/reset-mfa', async (req, res, next) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password are required to reset 2FA.' });
+    }
+
+    const user = await UserModel.findByEmail(email);
+    if (!user) {
+      return res.status(401).json({ error: 'Invalid email or password.' });
+    }
+
+    const validPassword = await UserModel.verifyPassword(password, user.password);
+    if (!validPassword) {
+      return res.status(401).json({ error: 'Invalid password. Cannot reset 2FA.' });
+    }
+
+    await UserModel.disableMfa(user.id);
+    const token = generateToken(user, true);
+
+    res.json({
+      message: '2FA has been successfully reset. You are now logged in.',
+      user: { id: user.id, email: user.email, name: user.name, role: user.role, mfa_enabled: false },
+      token
     });
   } catch (err) {
     next(err);

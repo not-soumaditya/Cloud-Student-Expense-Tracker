@@ -427,7 +427,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }) {
                 <form onSubmit={handleEnableMfa} className="space-y-4">
                   <div className="text-center space-y-2">
                     <p className="text-xs text-slate-500 dark:text-slate-400">
-                      Scan this QR code with <strong>Google Authenticator</strong> or Microsoft Authenticator:
+                      Scan this QR code with <strong>Google Authenticator</strong>:
                     </p>
                     
                     {/* QR Code Image */}

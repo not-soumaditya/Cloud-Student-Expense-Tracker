@@ -57,6 +57,15 @@ const UserModel = {
     return result.rows[0];
   },
 
+  // Disable / Reset MFA for a user (emergency recovery)
+  async disableMfa(userId) {
+    const result = await pool.query(
+      'UPDATE users SET mfa_enabled = FALSE, mfa_secret = NULL, updated_at = NOW() WHERE id = $1 RETURNING id, email, name, role, mfa_enabled',
+      [userId]
+    );
+    return result.rows[0];
+  },
+
   // Get MFA secret for verification during login
   async getMfaSecret(userId) {
     const result = await pool.query(

@@ -183,10 +183,12 @@ export function AuthProvider({ children }) {
 
   // Verify TOTP code during login
   const verifyMfa = async ({ partialToken, totpCode, secret, userId }) => {
+    const cleanedCode = (totpCode || '').toString().trim().replace(/[\s-]/g, '');
+
     try {
       const res = await API.post('/auth/verify-mfa', {
         partial_token: partialToken,
-        totp_code: totpCode,
+        totp_code: cleanedCode,
       });
       setUser(res.data.user);
       setToken(res.data.token);
@@ -203,7 +205,7 @@ export function AuthProvider({ children }) {
           throw new Error('MFA secret not found for user');
         }
 
-        const isValid = await verifyTOTPCode(totpCode, secretToUse);
+        const isValid = await verifyTOTPCode(cleanedCode, secretToUse, 2);
         if (!isValid) {
           throw new Error('Invalid 6-digit TOTP code. Please check Google Authenticator.');
         }
@@ -256,10 +258,11 @@ export function AuthProvider({ children }) {
   const enableMfa = async (totpCode, currentSecret, customToken, customUserId) => {
     const activeToken = customToken || token;
     const activeUserId = customUserId || user?.id;
+    const cleanedCode = (totpCode || '').toString().trim().replace(/[\s-]/g, '');
 
     try {
       const config = activeToken ? { headers: { Authorization: `Bearer ${activeToken}` } } : {};
-      const res = await API.post('/auth/enable-mfa', { totp_code: totpCode }, config);
+      const res = await API.post('/auth/enable-mfa', { totp_code: cleanedCode }, config);
       setUser(prev => prev ? { ...prev, mfa_enabled: true } : res.data.user);
       return res.data;
     } catch (err) {
@@ -268,7 +271,7 @@ export function AuthProvider({ children }) {
         throw new Error('MFA secret missing. Please restart MFA setup.');
       }
 
-      const isValid = await verifyTOTPCode(totpCode, currentSecret);
+      const isValid = await verifyTOTPCode(cleanedCode, currentSecret, 2);
       if (!isValid) {
         throw new Error('Invalid 6-digit TOTP code. Please check Google Authenticator.');
       }
@@ -287,6 +290,42 @@ export function AuthProvider({ children }) {
         message: 'MFA enabled successfully!',
         user: { ...(user || {}), mfa_enabled: true }
       };
+    }
+  };
+
+  // Emergency 2FA Reset using account password
+  const resetMfa = async ({ email, password }) => {
+    try {
+      const res = await API.post('/auth/reset-mfa', { email, password });
+      setUser(res.data.user);
+      setToken(res.data.token);
+      return res.data;
+    } catch (err) {
+      if (!err.response || err.code === 'ERR_NETWORK') {
+        const localUsers = getLocalUsers();
+        const idx = localUsers.findIndex(u => u.email.toLowerCase() === email.toLowerCase());
+        if (idx === -1) {
+          throw new Error('User not found.');
+        }
+        if (localUsers[idx].password && localUsers[idx].password !== password) {
+          throw new Error('Incorrect password. Cannot reset 2FA.');
+        }
+
+        localUsers[idx].mfa_enabled = false;
+        localUsers[idx].mfa_secret = null;
+        saveLocalUsers(localUsers);
+
+        const fullToken = `demo_jwt_${localUsers[idx].id}_${Date.now()}`;
+        const updatedUser = { ...localUsers[idx], mfa_enabled: false };
+        setUser(updatedUser);
+        setToken(fullToken);
+        return {
+          message: '2FA has been successfully reset. You are now logged in.',
+          user: updatedUser,
+          token: fullToken
+        };
+      }
+      throw err;
     }
   };
 
@@ -309,6 +348,7 @@ export function AuthProvider({ children }) {
         verifyMfa,
         setupMfa,
         enableMfa,
+        resetMfa,
         completeAuth,
         logout,
         openAuthModal,

@@ -10,11 +10,12 @@ import {
   HiBanknotes,
   HiQrCode,
   HiClipboardDocument,
-  HiCheck
+  HiCheck,
+  HiArrowPath
 } from 'react-icons/hi2';
 
 export default function LandingAuth() {
-  const { login, register, verifyMfa, setupMfa, enableMfa, completeAuth } = useAuth();
+  const { login, register, verifyMfa, setupMfa, enableMfa, resetMfa, completeAuth } = useAuth();
   const [tab, setTab] = useState('login'); // 'login' | 'register'
   const [step, setStep] = useState('form'); // 'form' | 'mfa_verify' | 'mfa_setup'
   
@@ -25,6 +26,10 @@ export default function LandingAuth() {
   const [role, setRole] = useState('student');
   const [totpCode, setTotpCode] = useState('');
   const [copiedKey, setCopiedKey] = useState(false);
+  
+  // Emergency 2FA reset state
+  const [showResetMfa, setShowResetMfa] = useState(false);
+  const [resetPassword, setResetPassword] = useState('');
   
   // Registration temporary state before MFA is confirmed
   const [pendingRegistration, setPendingRegistration] = useState(null); // { user, token }
@@ -47,6 +52,7 @@ export default function LandingAuth() {
         });
         setStep('mfa_verify');
         setTotpCode('');
+        setShowResetMfa(false);
         toast('2FA required: Enter code from Google Authenticator', { icon: '🔐' });
       } else {
         toast.success(`Welcome back, ${res.user.name}!`);
@@ -60,8 +66,9 @@ export default function LandingAuth() {
 
   const handleMfaVerify = async (e) => {
     e.preventDefault();
-    if (totpCode.length !== 6) {
-      toast.error('Please enter a 6-digit code');
+    const clean = totpCode.toString().trim().replace(/[\s-]/g, '');
+    if (clean.length !== 6) {
+      toast.error('Please enter a valid 6-digit code');
       return;
     }
 
@@ -69,13 +76,34 @@ export default function LandingAuth() {
     try {
       const res = await verifyMfa({ 
         partialToken: loginMfaData?.partialToken, 
-        totpCode,
+        totpCode: clean,
         secret: loginMfaData?.secret,
         userId: loginMfaData?.user?.id
       });
       toast.success(`Google Authenticator verified! Welcome, ${res.user?.name || 'Student'}`);
     } catch (err) {
-      toast.error(err.response?.data?.error || err.message || 'Invalid 6-digit TOTP code. Please try again.');
+      toast.error(err.response?.data?.error || err.message || 'Invalid 6-digit code. Check your authenticator time or click "Unlock with Password" below.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEmergencyResetMfa = async (e) => {
+    e.preventDefault();
+    if (!resetPassword) {
+      toast.error('Please enter your account password');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const targetEmail = loginMfaData?.user?.email || email;
+      const res = await resetMfa({ email: targetEmail, password: resetPassword });
+      toast.success(res.message || '2FA has been reset! Welcome to the dashboard.');
+      setShowResetMfa(false);
+      setStep('form');
+    } catch (err) {
+      toast.error(err.response?.data?.error || err.message || 'Incorrect password. Cannot reset 2FA.');
     } finally {
       setLoading(false);
     }
@@ -104,7 +132,8 @@ export default function LandingAuth() {
 
   const handleEnableMfaAndFinish = async (e) => {
     e.preventDefault();
-    if (totpCode.length !== 6) {
+    const clean = totpCode.toString().trim().replace(/[\s-]/g, '');
+    if (clean.length !== 6) {
       toast.error('Please enter the 6-digit code from Google Authenticator');
       return;
     }
@@ -112,7 +141,7 @@ export default function LandingAuth() {
     setLoading(true);
     try {
       await enableMfa(
-        totpCode, 
+        clean, 
         mfaData?.secret, 
         pendingRegistration?.token, 
         pendingRegistration?.user?.id
@@ -165,7 +194,7 @@ export default function LandingAuth() {
         {/* 2FA Badge with Real Live Indicator */}
         <div className="inline-flex items-center gap-1.5 mt-2.5 px-3 py-1 rounded-full text-xs font-semibold bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300 border border-violet-200/60 dark:border-violet-800/40">
           <HiShieldCheck className="w-4 h-4 text-violet-600 dark:text-violet-400" />
-          <span>Real Google Authenticator (RFC 6238 TOTP) MFA</span>
+          <span>Protected using Google Authenticator MFA</span>
         </div>
       </div>
 
@@ -347,55 +376,123 @@ export default function LandingAuth() {
 
         {/* Step: MFA Verification (During Login) */}
         {step === 'mfa_verify' && (
-          <form onSubmit={handleMfaVerify} className="space-y-5 text-center animate-fadeIn">
-            <div className="w-14 h-14 mx-auto rounded-2xl bg-gradient-to-tr from-violet-600 to-indigo-500 text-white flex items-center justify-center shadow-lg shadow-violet-500/30">
-              <HiKey className="w-7 h-7" />
-            </div>
+          <div className="space-y-5 animate-fadeIn">
+            {showResetMfa ? (
+              /* Emergency 2FA Unlock / Reset Form */
+              <form onSubmit={handleEmergencyResetMfa} className="space-y-4 text-center">
+                <div className="w-14 h-14 mx-auto rounded-2xl bg-amber-100 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center shadow-lg shadow-amber-500/20">
+                  <HiLockClosed className="w-7 h-7" />
+                </div>
 
-            <div>
-              <span className="text-[11px] font-bold uppercase tracking-wider text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-950/50 px-2.5 py-0.5 rounded-full border border-violet-200/50 dark:border-violet-800/40">
-                Two-Factor Authentication
-              </span>
-              <h2 className="text-lg font-bold text-slate-900 dark:text-white mt-2">
-                Google Authenticator Code
-              </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                Open <strong>Google Authenticator</strong> on your phone and enter the 6-digit code for <strong>StudentExpenseTracker</strong>
-              </p>
-            </div>
+                <div>
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50 px-2.5 py-0.5 rounded-full border border-amber-200/50">
+                    Emergency Account Unlock
+                  </span>
+                  <h2 className="text-lg font-bold text-slate-900 dark:text-white mt-2">
+                    Reset 2FA with Password
+                  </h2>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                    Enter the password for <strong>{loginMfaData?.user?.email || email}</strong> to disable 2FA and regain instant access:
+                  </p>
+                </div>
 
-            <div>
-              <input
-                type="text"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                maxLength={6}
-                required
-                autoFocus
-                value={totpCode}
-                onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, ''))}
-                placeholder="000000"
-                className="w-full text-center text-3xl font-mono font-bold tracking-widest py-3.5 rounded-2xl border-2 border-violet-400 dark:border-violet-600 bg-violet-50/30 dark:bg-slate-800/80 text-slate-900 dark:text-white focus:ring-4 focus:ring-violet-500/20 focus:outline-none transition"
-              />
-            </div>
+                <div>
+                  <input
+                    type="password"
+                    required
+                    autoFocus
+                    value={resetPassword}
+                    onChange={(e) => setResetPassword(e.target.value)}
+                    placeholder="Enter account password"
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
+                  />
+                </div>
 
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => { setStep('form'); setLoginMfaData(null); }}
-                className="py-2.5 px-4 rounded-xl text-xs font-semibold border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
-              >
-                Back
-              </button>
-              <button
-                type="submit"
-                disabled={loading || totpCode.length !== 6}
-                className="flex-1 py-2.5 px-4 rounded-xl font-bold text-xs text-white bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 shadow-md transition disabled:opacity-50"
-              >
-                {loading ? 'Verifying...' : 'Verify & Enter Dashboard'}
-              </button>
-            </div>
-          </form>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowResetMfa(false)}
+                    className="py-2.5 px-4 rounded-xl text-xs font-semibold border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                  >
+                    Back to 6-Digit Code
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={loading || !resetPassword}
+                    className="flex-1 py-2.5 px-4 rounded-xl font-bold text-xs text-white bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 shadow-md transition disabled:opacity-50"
+                  >
+                    {loading ? 'Unlocking...' : 'Reset 2FA & Enter Dashboard'}
+                  </button>
+                </div>
+              </form>
+            ) : (
+              /* Normal TOTP Code Verification */
+              <form onSubmit={handleMfaVerify} className="space-y-5 text-center">
+                <div className="w-14 h-14 mx-auto rounded-2xl bg-gradient-to-tr from-violet-600 to-indigo-500 text-white flex items-center justify-center shadow-lg shadow-violet-500/30">
+                  <HiKey className="w-7 h-7" />
+                </div>
+
+                <div>
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-950/50 px-2.5 py-0.5 rounded-full border border-violet-200/50 dark:border-violet-800/40">
+                    Two-Factor Authentication
+                  </span>
+                  <h2 className="text-lg font-bold text-slate-900 dark:text-white mt-2">
+                    Google Authenticator Code
+                  </h2>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                    Open <strong>Google Authenticator</strong> on your phone and enter the 6-digit code for <strong>StudentExpenseTracker</strong> (time-sensitive)
+                  </p>
+                </div>
+
+                <div>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    maxLength={6}
+                    required
+                    autoFocus
+                    value={totpCode}
+                    onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, ''))}
+                    placeholder="000000"
+                    className="w-full text-center text-3xl font-mono font-bold tracking-widest py-3.5 rounded-2xl border-2 border-violet-400 dark:border-violet-600 bg-violet-50/30 dark:bg-slate-800/80 text-slate-900 dark:text-white focus:ring-4 focus:ring-violet-500/20 focus:outline-none transition"
+                  />
+                </div>
+
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => { setStep('form'); setLoginMfaData(null); }}
+                    className="py-2.5 px-4 rounded-xl text-xs font-semibold border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                  >
+                    Back
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={loading || totpCode.length !== 6}
+                    className="flex-1 py-2.5 px-4 rounded-xl font-bold text-xs text-white bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 shadow-md transition disabled:opacity-50"
+                  >
+                    {loading ? 'Verifying...' : 'Verify & Enter Dashboard'}
+                  </button>
+                </div>
+
+                {/* Emergency Unlock Helper */}
+                <div className="pt-3 border-t border-slate-100 dark:border-slate-800 text-center space-y-2">
+                  <p className="text-[11px] text-slate-400 dark:text-slate-500">
+                    ⏱️ Make sure your phone's clock is set to <strong>Automatic / Network Time</strong>.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => { setShowResetMfa(true); setResetPassword(''); }}
+                    className="text-xs font-semibold text-violet-600 dark:text-violet-400 hover:text-violet-700 hover:underline inline-flex items-center gap-1"
+                  >
+                    <HiArrowPath className="w-3.5 h-3.5" />
+                    <span>Locked out or code not matching? Reset 2FA with password</span>
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
         )}
 
         {/* Step: MFA QR Setup (During Registration) */}

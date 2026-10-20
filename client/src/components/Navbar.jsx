@@ -54,7 +54,6 @@ function Navbar() {
               title="About this Project"
             >
               <HiInformationCircle className="w-4 h-4 text-violet-600 dark:text-violet-400" />
-              <span>About</span>
             </Link>
           </div>
 
@@ -100,12 +99,10 @@ function Navbar() {
               {theme === 'dark' ? (
                 <>
                   <HiMoon className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                  <span className="hidden sm:inline">Dark</span>
                 </>
               ) : (
                 <>
                   <HiSun className="w-4 h-4 text-amber-500" />
-                  <span className="hidden sm:inline">Light</span>
                 </>
               )}
             </button>
