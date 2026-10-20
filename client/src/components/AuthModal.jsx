@@ -9,22 +9,14 @@ import {
   HiEnvelope, 
   HiUser, 
   HiQrCode,
-  HiKey
+  HiKey,
+  HiClipboardDocument,
+  HiCheck
 } from 'react-icons/hi2';
 
 export default function AuthModal({ isOpen, onClose, initialMode = 'login' }) {
-  const { login, register, verifyMfa, setupMfa, enableMfa } = useAuth();
-  const [mode, setMode] = useState(initialMode); // 'login' | 'register' | 'mfa_verify' | 'mfa_setup'
-  
-  useEffect(() => {
-    if (isOpen) {
-      setMode(initialMode);
-      setTotpCode('');
-      setPartialToken(null);
-      setMfaData(null);
-      setLoading(false);
-    }
-  }, [isOpen, initialMode]);
+  const { login, register, verifyMfa, setupMfa, enableMfa, user } = useAuth();
+  const [mode, setMode] = useState(initialMode); // 'login' | 'register' | 'mfa_verify' | 'mfa_setup' | 'mfa_status'
   
   // Form states
   const [name, setName] = useState('');
@@ -32,11 +24,40 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }) {
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('student');
   const [totpCode, setTotpCode] = useState('');
+  const [copiedKey, setCopiedKey] = useState(false);
   
   // MFA flow state
   const [partialToken, setPartialToken] = useState(null);
-  const [mfaData, setMfaData] = useState(null); // { secret, qr_code }
+  const [mfaData, setMfaData] = useState(null); // { secret, qr_code, otpauth_url }
   const [loading, setLoading] = useState(false);
+
+  const startMfaSetup = async () => {
+    setLoading(true);
+    try {
+      const data = await setupMfa();
+      setMfaData(data);
+      setMode('mfa_setup');
+    } catch (err) {
+      toast.error(err.response?.data?.error || err.message || 'Failed to initiate Google Authenticator setup');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isOpen) {
+      setMode(initialMode);
+      setTotpCode('');
+      setPartialToken(null);
+      setMfaData(null);
+      setLoading(false);
+      setCopiedKey(false);
+
+      if (initialMode === 'mfa_setup') {
+        startMfaSetup();
+      }
+    }
+  }, [isOpen, initialMode]);
 
   if (!isOpen) return null;
 
@@ -49,6 +70,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }) {
     setPartialToken(null);
     setMfaData(null);
     setLoading(false);
+    setCopiedKey(false);
   };
 
   const handleClose = () => {
@@ -70,7 +92,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }) {
         handleClose();
       }
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Login failed. Please check credentials.');
+      toast.error(err.response?.data?.error || err.message || 'Login failed. Please check credentials.');
     } finally {
       setLoading(false);
     }
@@ -81,10 +103,10 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }) {
     setLoading(true);
     try {
       const res = await verifyMfa({ partialToken, totpCode });
-      toast.success(`MFA verified! Welcome, ${res.user.name}`);
+      toast.success(`Google Authenticator verified! Welcome, ${res.user?.name || 'User'}`);
       handleClose();
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Invalid 6-digit TOTP code');
+      toast.error(err.response?.data?.error || err.message || 'Invalid 6-digit TOTP code');
     } finally {
       setLoading(false);
     }
@@ -94,25 +116,11 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }) {
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await register({ name, email, password, role });
+      await register({ name, email, password, role });
       toast.success(`Account created as ${role}!`);
-      // Ask if they want to setup MFA right away
       setMode('mfa_setup_prompt');
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Registration failed');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const startMfaSetup = async () => {
-    setLoading(true);
-    try {
-      const data = await setupMfa();
-      setMfaData(data);
-      setMode('mfa_setup');
-    } catch (err) {
-      toast.error(err.response?.data?.error || 'Failed to initiate MFA setup');
+      toast.error(err.response?.data?.error || err.message || 'Registration failed');
     } finally {
       setLoading(false);
     }
@@ -122,13 +130,22 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }) {
     e.preventDefault();
     setLoading(true);
     try {
-      await enableMfa(totpCode);
-      toast.success('Two-factor authentication (MFA) enabled successfully!');
+      await enableMfa(totpCode, mfaData?.secret);
+      toast.success('🎉 Google Authenticator (2FA) enabled successfully!');
       handleClose();
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Invalid TOTP code. Could not enable MFA.');
+      toast.error(err.response?.data?.error || err.message || 'Invalid TOTP code. Could not enable MFA.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const copySecretKey = () => {
+    if (mfaData?.secret) {
+      navigator.clipboard.writeText(mfaData.secret);
+      setCopiedKey(true);
+      toast.success('Secret key copied!');
+      setTimeout(() => setCopiedKey(false), 2000);
     }
   };
 
@@ -147,9 +164,10 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }) {
             <h2 className="text-lg font-bold text-slate-900 dark:text-white">
               {mode === 'login' && 'Sign In to Your Account'}
               {mode === 'register' && 'Create Your Account'}
-              {mode === 'mfa_verify' && 'Two-Factor Authentication'}
+              {mode === 'mfa_verify' && 'Google Authenticator 2FA'}
               {mode === 'mfa_setup_prompt' && 'Secure Your Account'}
               {mode === 'mfa_setup' && 'Set Up Google Authenticator'}
+              {mode === 'mfa_status' && 'Two-Factor Authentication'}
             </h2>
           </div>
           <button
@@ -252,7 +270,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }) {
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="alice@vit.ac.in"
+                    placeholder="student@vit.ac.in"
                     className="w-full pl-10 pr-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
                   />
                 </div>
@@ -344,6 +362,8 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }) {
               <div>
                 <input
                   type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   maxLength={6}
                   required
                   autoFocus
@@ -374,7 +394,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }) {
                 Account Registered Successfully!
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Would you like to enable Multi-Factor Authentication (TOTP) now using Google or Microsoft Authenticator?
+                Would you like to enable Multi-Factor Authentication (TOTP) now using Google Authenticator?
               </p>
               <div className="flex gap-2 pt-2">
                 <button
@@ -396,46 +416,118 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }) {
           )}
 
           {/* MFA SETUP SCAN QR */}
-          {mode === 'mfa_setup' && mfaData && (
-            <form onSubmit={handleEnableMfa} className="space-y-4">
-              <div className="text-center space-y-2">
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Scan this QR code with <strong>Google Authenticator</strong> or enter the secret key manually:
-                </p>
-                
-                {/* QR Code Image */}
-                <div className="flex justify-center p-3 bg-white rounded-xl shadow-inner border border-slate-200 dark:border-slate-700 max-w-[200px] mx-auto">
-                  <img src={mfaData.qr_code} alt="MFA QR Code" className="w-40 h-40" />
+          {mode === 'mfa_setup' && (
+            <div className="space-y-4">
+              {loading && !mfaData ? (
+                <div className="py-8 text-center text-slate-500">
+                  <div className="animate-spin w-8 h-8 border-4 border-violet-500 border-t-transparent rounded-full mx-auto mb-2" />
+                  <p className="text-xs">Generating QR code & secret key...</p>
                 </div>
+              ) : mfaData ? (
+                <form onSubmit={handleEnableMfa} className="space-y-4">
+                  <div className="text-center space-y-2">
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      Scan this QR code with <strong>Google Authenticator</strong> or Microsoft Authenticator:
+                    </p>
+                    
+                    {/* QR Code Image */}
+                    <div className="flex justify-center p-3 bg-white rounded-xl shadow-inner border border-slate-200 dark:border-slate-700 max-w-[200px] mx-auto">
+                      <img src={mfaData.qr_code} alt="MFA QR Code" className="w-40 h-40 object-contain" />
+                    </div>
 
-                <div className="p-2 bg-slate-100 dark:bg-slate-800 rounded-lg text-xs font-mono text-slate-700 dark:text-slate-300 break-all select-all">
-                  Secret: {mfaData.secret}
-                </div>
+                    <div className="p-2.5 bg-slate-100 dark:bg-slate-800 rounded-xl text-xs flex items-center justify-between gap-2 border border-slate-200 dark:border-slate-700">
+                      <div className="text-left font-mono truncate text-slate-700 dark:text-slate-300">
+                        <span className="text-[10px] text-slate-400 block uppercase font-sans">Secret Key:</span>
+                        <span className="select-all font-bold tracking-wider">{mfaData.secret}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={copySecretKey}
+                        className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 border border-slate-200 dark:border-slate-600 shadow-sm"
+                      >
+                        {copiedKey ? <HiCheck className="w-3.5 h-3.5 text-emerald-600" /> : <HiClipboardDocument className="w-3.5 h-3.5" />}
+                        <span>{copiedKey ? 'Copied' : 'Copy'}</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1 text-center">
+                      Enter 6-digit Code from Authenticator
+                    </label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      maxLength={6}
+                      required
+                      autoFocus
+                      value={totpCode}
+                      onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, ''))}
+                      placeholder="000000"
+                      className="w-full text-center text-xl font-mono tracking-widest py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:outline-none"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={loading || totpCode.length !== 6}
+                    className="w-full py-2.5 px-4 rounded-xl font-semibold text-white bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 shadow-md transition disabled:opacity-50"
+                  >
+                    {loading ? 'Activating...' : 'Verify & Activate 2FA'}
+                  </button>
+                </form>
+              ) : null}
+            </div>
+          )}
+
+          {/* MFA STATUS MODAL (WHEN ALREADY ENABLED) */}
+          {mode === 'mfa_status' && (
+            <div className="space-y-4 text-center py-2">
+              <div className="w-14 h-14 mx-auto rounded-full bg-emerald-50 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                <HiShieldCheck className="w-8 h-8" />
               </div>
-
               <div>
-                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1 text-center">
-                  Enter 6-digit Code from Authenticator
-                </label>
-                <input
-                  type="text"
-                  maxLength={6}
-                  required
-                  value={totpCode}
-                  onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, ''))}
-                  placeholder="000000"
-                  className="w-full text-center text-xl font-mono tracking-widest py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:outline-none"
-                />
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                  Two-Factor Authentication is Active
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  Your account is secured with <strong>Google Authenticator (RFC 6238 TOTP)</strong>. A 6-digit code is required each time you sign in.
+                </p>
               </div>
 
-              <button
-                type="submit"
-                disabled={loading || totpCode.length !== 6}
-                className="w-full py-2.5 px-4 rounded-xl font-semibold text-white bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 shadow-md transition disabled:opacity-50"
-              >
-                {loading ? 'Activating...' : 'Verify & Activate MFA'}
-              </button>
-            </form>
+              <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700 text-left text-xs space-y-1">
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Status:</span>
+                  <span className="font-semibold text-emerald-600 dark:text-emerald-400">Protected (Active)</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Authenticator:</span>
+                  <span className="font-semibold text-slate-700 dark:text-slate-300">Google Authenticator</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Protected Account:</span>
+                  <span className="font-semibold text-slate-700 dark:text-slate-300 truncate max-w-[200px]">{user?.email}</span>
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={startMfaSetup}
+                  className="flex-1 py-2 px-3 rounded-xl text-xs font-semibold text-violet-700 dark:text-violet-300 bg-violet-50 dark:bg-violet-950/40 hover:bg-violet-100 border border-violet-200 dark:border-violet-800 transition"
+                >
+                  Reconfigure / View QR Code
+                </button>
+                <button
+                  type="button"
+                  onClick={handleClose}
+                  className="py-2 px-4 rounded-xl text-xs font-semibold text-white bg-slate-800 dark:bg-slate-700 hover:bg-slate-900 transition"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
           )}
 
         </div>

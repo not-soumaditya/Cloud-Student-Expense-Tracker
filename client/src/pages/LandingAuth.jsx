@@ -8,11 +8,13 @@ import {
   HiUser, 
   HiKey,
   HiBanknotes,
-  HiQrCode
+  HiQrCode,
+  HiClipboardDocument,
+  HiCheck
 } from 'react-icons/hi2';
 
 export default function LandingAuth() {
-  const { login, register, verifyMfa, setupMfa, enableMfa } = useAuth();
+  const { login, register, verifyMfa, setupMfa, enableMfa, completeAuth } = useAuth();
   const [tab, setTab] = useState('login'); // 'login' | 'register'
   const [step, setStep] = useState('form'); // 'form' | 'mfa_verify' | 'mfa_setup'
   
@@ -22,10 +24,14 @@ export default function LandingAuth() {
   const [name, setName] = useState('');
   const [role, setRole] = useState('student');
   const [totpCode, setTotpCode] = useState('');
+  const [copiedKey, setCopiedKey] = useState(false);
   
-  // MFA flow state
-  const [partialToken, setPartialToken] = useState(null);
-  const [mfaData, setMfaData] = useState(null);
+  // Registration temporary state before MFA is confirmed
+  const [pendingRegistration, setPendingRegistration] = useState(null); // { user, token }
+  
+  // Login MFA flow state
+  const [loginMfaData, setLoginMfaData] = useState(null); // { partialToken, secret, user }
+  const [mfaData, setMfaData] = useState(null); // { secret, qr_code, otpauth_url }
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async (e) => {
@@ -34,14 +40,19 @@ export default function LandingAuth() {
     try {
       const res = await login({ email, password });
       if (res.mfaRequired) {
-        setPartialToken(res.partialToken);
+        setLoginMfaData({
+          partialToken: res.partialToken,
+          secret: res.secret,
+          user: res.user,
+        });
         setStep('mfa_verify');
-        toast('Please enter your 6-digit Google Authenticator code.', { icon: '🔐' });
+        setTotpCode('');
+        toast('2FA required: Enter code from Google Authenticator', { icon: '🔐' });
       } else {
         toast.success(`Welcome back, ${res.user.name}!`);
       }
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Invalid email or password.');
+      toast.error(err.response?.data?.error || err.message || 'Invalid email or password.');
     } finally {
       setLoading(false);
     }
@@ -49,12 +60,22 @@ export default function LandingAuth() {
 
   const handleMfaVerify = async (e) => {
     e.preventDefault();
+    if (totpCode.length !== 6) {
+      toast.error('Please enter a 6-digit code');
+      return;
+    }
+
     setLoading(true);
     try {
-      const res = await verifyMfa({ partialToken, totpCode });
-      toast.success(`Verified! Welcome, ${res.user.name}`);
+      const res = await verifyMfa({ 
+        partialToken: loginMfaData?.partialToken, 
+        totpCode,
+        secret: loginMfaData?.secret,
+        userId: loginMfaData?.user?.id
+      });
+      toast.success(`Google Authenticator verified! Welcome, ${res.user?.name || 'Student'}`);
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Invalid 6-digit code. Please try again.');
+      toast.error(err.response?.data?.error || err.message || 'Invalid 6-digit TOTP code. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -64,33 +85,66 @@ export default function LandingAuth() {
     e.preventDefault();
     setLoading(true);
     try {
-      await register({ name, email, password, role });
-      toast.success('Account created successfully!');
-      // Offer MFA setup
-      try {
-        const mfa = await setupMfa();
-        setMfaData(mfa);
-        setStep('mfa_setup');
-      } catch {
-        // If MFA setup fails or skipped, login is already active
-      }
+      // 1. Create account without immediately unmounting to dashboard
+      const regRes = await register({ name, email, password, role, autoLogin: false });
+      setPendingRegistration(regRes);
+      toast.success('Account created! Now configure Google Authenticator.');
+
+      // 2. Fetch TOTP secret and QR code for this user
+      const mfa = await setupMfa(regRes.token, email);
+      setMfaData(mfa);
+      setTotpCode('');
+      setStep('mfa_setup');
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Registration failed.');
+      toast.error(err.response?.data?.error || err.message || 'Registration failed.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleEnableMfa = async (e) => {
+  const handleEnableMfaAndFinish = async (e) => {
     e.preventDefault();
+    if (totpCode.length !== 6) {
+      toast.error('Please enter the 6-digit code from Google Authenticator');
+      return;
+    }
+
     setLoading(true);
     try {
-      await enableMfa(totpCode);
-      toast.success('Google Authenticator 2FA enabled successfully!');
+      await enableMfa(
+        totpCode, 
+        mfaData?.secret, 
+        pendingRegistration?.token, 
+        pendingRegistration?.user?.id
+      );
+      toast.success('🎉 Google Authenticator 2FA enabled! Welcome to ExpenseTracker!');
+      // Complete login and transition to dashboard
+      completeAuth(
+        { ...pendingRegistration.user, mfa_enabled: true },
+        pendingRegistration.token
+      );
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Invalid verification code.');
+      toast.error(err.response?.data?.error || err.message || 'Invalid verification code. Please check your authenticator.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSkipMfa = () => {
+    if (pendingRegistration) {
+      toast('MFA skipped. You can enable Google Authenticator anytime from the navigation bar.', { icon: 'ℹ️' });
+      completeAuth(pendingRegistration.user, pendingRegistration.token);
+    } else {
+      setStep('form');
+    }
+  };
+
+  const copySecretKey = () => {
+    if (mfaData?.secret) {
+      navigator.clipboard.writeText(mfaData.secret);
+      setCopiedKey(true);
+      toast.success('Secret key copied to clipboard!');
+      setTimeout(() => setCopiedKey(false), 2500);
     }
   };
 
@@ -108,10 +162,10 @@ export default function LandingAuth() {
           Manage budgets, track daily spending, and analyze financial reports
         </p>
 
-        {/* User-friendly 2FA Badge */}
+        {/* 2FA Badge with Real Live Indicator */}
         <div className="inline-flex items-center gap-1.5 mt-2.5 px-3 py-1 rounded-full text-xs font-semibold bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300 border border-violet-200/60 dark:border-violet-800/40">
           <HiShieldCheck className="w-4 h-4 text-violet-600 dark:text-violet-400" />
-          <span>Protected with Google Authenticator (TOTP)</span>
+          <span>Real Google Authenticator (RFC 6238 TOTP) MFA</span>
         </div>
       </div>
 
@@ -121,7 +175,7 @@ export default function LandingAuth() {
         {/* Step: Normal Form (Login / Register) */}
         {step === 'form' && (
           <>
-            {/* Pill Tabs */}
+            {/* Tabs */}
             <div className="grid grid-cols-2 gap-1 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-2xl mb-6">
               <button
                 type="button"
@@ -189,7 +243,7 @@ export default function LandingAuth() {
                   disabled={loading}
                   className="w-full py-3 px-4 rounded-xl font-bold text-sm text-white bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 shadow-md shadow-violet-500/25 hover:shadow-violet-500/40 transition active:scale-[0.99] disabled:opacity-50 mt-2"
                 >
-                  {loading ? 'Signing in...' : 'Sign In'}
+                  {loading ? 'Checking credentials...' : 'Sign In'}
                 </button>
               </form>
             )}
@@ -225,7 +279,7 @@ export default function LandingAuth() {
                       required
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      placeholder="alice@vit.ac.in"
+                      placeholder="student@vit.ac.in"
                       className="w-full pl-10 pr-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none transition"
                     />
                   </div>
@@ -284,7 +338,7 @@ export default function LandingAuth() {
                   disabled={loading}
                   className="w-full py-3 px-4 rounded-xl font-bold text-sm text-white bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 shadow-md shadow-violet-500/25 hover:shadow-violet-500/40 transition active:scale-[0.99] disabled:opacity-50 mt-2"
                 >
-                  {loading ? 'Creating account...' : 'Create Account'}
+                  {loading ? 'Creating account...' : 'Create Account & Setup 2FA'}
                 </button>
               </form>
             )}
@@ -293,37 +347,42 @@ export default function LandingAuth() {
 
         {/* Step: MFA Verification (During Login) */}
         {step === 'mfa_verify' && (
-          <form onSubmit={handleMfaVerify} className="space-y-5 text-center">
-            <div className="w-12 h-12 mx-auto rounded-2xl bg-violet-100 dark:bg-violet-950/60 text-violet-600 dark:text-violet-400 flex items-center justify-center">
-              <HiKey className="w-6 h-6" />
+          <form onSubmit={handleMfaVerify} className="space-y-5 text-center animate-fadeIn">
+            <div className="w-14 h-14 mx-auto rounded-2xl bg-gradient-to-tr from-violet-600 to-indigo-500 text-white flex items-center justify-center shadow-lg shadow-violet-500/30">
+              <HiKey className="w-7 h-7" />
             </div>
 
             <div>
-              <h2 className="text-base font-bold text-slate-900 dark:text-white">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-950/50 px-2.5 py-0.5 rounded-full border border-violet-200/50 dark:border-violet-800/40">
                 Two-Factor Authentication
+              </span>
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white mt-2">
+                Google Authenticator Code
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                Enter the 6-digit verification code from your <strong>Google Authenticator</strong> app
+                Open <strong>Google Authenticator</strong> on your phone and enter the 6-digit code for <strong>StudentExpenseTracker</strong>
               </p>
             </div>
 
             <div>
               <input
                 type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 maxLength={6}
                 required
                 autoFocus
                 value={totpCode}
                 onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, ''))}
                 placeholder="000000"
-                className="w-full text-center text-2xl font-mono tracking-widest py-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 text-slate-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:outline-none transition"
+                className="w-full text-center text-3xl font-mono font-bold tracking-widest py-3.5 rounded-2xl border-2 border-violet-400 dark:border-violet-600 bg-violet-50/30 dark:bg-slate-800/80 text-slate-900 dark:text-white focus:ring-4 focus:ring-violet-500/20 focus:outline-none transition"
               />
             </div>
 
             <div className="flex gap-2">
               <button
                 type="button"
-                onClick={() => { setStep('form'); setPartialToken(null); }}
+                onClick={() => { setStep('form'); setLoginMfaData(null); }}
                 className="py-2.5 px-4 rounded-xl text-xs font-semibold border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
               >
                 Back
@@ -339,50 +398,73 @@ export default function LandingAuth() {
           </form>
         )}
 
-        {/* Step: MFA QR Setup (After Registration) */}
+        {/* Step: MFA QR Setup (During Registration) */}
         {step === 'mfa_setup' && mfaData && (
-          <form onSubmit={handleEnableMfa} className="space-y-4 text-center">
+          <form onSubmit={handleEnableMfaAndFinish} className="space-y-4 text-center animate-fadeIn">
             <div className="w-12 h-12 mx-auto rounded-2xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
               <HiQrCode className="w-6 h-6" />
             </div>
 
             <div>
-              <h2 className="text-base font-bold text-slate-900 dark:text-white">
-                Set Up Google Authenticator
+              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 rounded-full border border-emerald-200/50">
+                Step 2 of 2: Setup 2FA
+              </span>
+              <h2 className="text-base font-bold text-slate-900 dark:text-white mt-1.5">
+                Scan with Google Authenticator
               </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                Scan this QR code with <strong>Google Authenticator</strong> or Microsoft Authenticator
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                Open <strong>Google Authenticator</strong> (or Microsoft Authenticator) and scan this QR code:
               </p>
             </div>
 
-            {/* QR Code */}
-            <div className="flex justify-center p-3 bg-white rounded-2xl shadow-inner border border-slate-200 max-w-[190px] mx-auto">
-              <img src={mfaData.qr_code} alt="2FA QR Code" className="w-36 h-36" />
+            {/* QR Code Container */}
+            <div className="flex flex-col items-center justify-center p-3 bg-white rounded-2xl shadow-inner border border-slate-200 max-w-[200px] mx-auto">
+              <img 
+                src={mfaData.qr_code} 
+                alt="Google Authenticator QR Code" 
+                className="w-40 h-40 object-contain rounded-lg" 
+              />
             </div>
 
-            <div className="p-2 bg-slate-100 dark:bg-slate-800 rounded-xl text-xs font-mono text-slate-700 dark:text-slate-300 break-all select-all">
-              Key: {mfaData.secret}
+            {/* Manual Secret Key with Copy Button */}
+            <div className="p-2.5 bg-slate-100 dark:bg-slate-800 rounded-xl text-xs flex items-center justify-between gap-2 border border-slate-200 dark:border-slate-700">
+              <div className="text-left font-mono truncate text-slate-700 dark:text-slate-300">
+                <span className="text-[10px] text-slate-400 block uppercase font-sans">Can't scan? Enter Key:</span>
+                <span className="select-all font-bold tracking-wider">{mfaData.secret}</span>
+              </div>
+              <button
+                type="button"
+                onClick={copySecretKey}
+                className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 border border-slate-200 dark:border-slate-600 shadow-sm"
+              >
+                {copiedKey ? <HiCheck className="w-3.5 h-3.5 text-emerald-600" /> : <HiClipboardDocument className="w-3.5 h-3.5" />}
+                <span>{copiedKey ? 'Copied' : 'Copy'}</span>
+              </button>
             </div>
 
+            {/* 6-Digit Code Input */}
             <div>
               <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1">
-                Enter 6-digit Code to Confirm
+                Enter 6-digit Code from Authenticator:
               </label>
               <input
                 type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 maxLength={6}
                 required
+                autoFocus
                 value={totpCode}
                 onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, ''))}
                 placeholder="000000"
-                className="w-full text-center text-xl font-mono tracking-widest py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 text-slate-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:outline-none"
+                className="w-full text-center text-2xl font-mono font-bold tracking-widest py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 text-slate-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:outline-none"
               />
             </div>
 
             <div className="flex gap-2 pt-1">
               <button
                 type="button"
-                onClick={() => setStep('form')}
+                onClick={handleSkipMfa}
                 className="py-2.5 px-4 rounded-xl text-xs font-semibold border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
               >
                 Skip for Now
@@ -392,7 +474,7 @@ export default function LandingAuth() {
                 disabled={loading || totpCode.length !== 6}
                 className="flex-1 py-2.5 px-4 rounded-xl font-bold text-xs text-white bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 shadow-md transition disabled:opacity-50"
               >
-                {loading ? 'Activating...' : 'Activate 2FA'}
+                {loading ? 'Activating...' : 'Verify & Activate 2FA'}
               </button>
             </div>
           </form>

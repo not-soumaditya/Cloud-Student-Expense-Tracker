@@ -25,7 +25,7 @@ const navItems = [
 function Navbar() {
   const location = useLocation();
   const { theme, toggleTheme } = useTheme();
-  const { user, isAuthenticated, logout } = useAuth();
+  const { user, isAuthenticated, logout, openAuthModal } = useAuth();
 
   return (
     <nav className="bg-white/95 dark:bg-slate-950/90 backdrop-blur-md sticky top-0 z-40 border-b border-slate-200 dark:border-slate-800/80 shadow-sm transition-colors duration-300">
@@ -114,9 +114,10 @@ function Navbar() {
             <div className="pl-1 sm:pl-2 border-l border-slate-200 dark:border-slate-800 flex items-center">
               {isAuthenticated ? (
                 <div className="flex items-center gap-2">
+                  {/* User Profile Badge */}
                   <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs">
                     <HiUserCircle className="w-4 h-4 text-violet-600 dark:text-violet-400" />
-                    <span className="font-semibold text-slate-800 dark:text-slate-200 max-w-[100px] truncate">
+                    <span className="font-semibold text-slate-800 dark:text-slate-200 max-w-[90px] truncate">
                       {user?.name}
                     </span>
                     <span className={`px-1.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider ${
@@ -126,13 +127,32 @@ function Navbar() {
                     }`}>
                       {user?.role}
                     </span>
-                    {user?.mfa_enabled && (
-                      <span title="2FA Active (TOTP)" className="text-emerald-600 dark:text-emerald-400">
-                        <HiShieldCheck className="w-4 h-4" />
-                      </span>
-                    )}
                   </div>
 
+                  {/* Interactive 2FA Status / Setup Button */}
+                  {user?.mfa_enabled ? (
+                    <button
+                      type="button"
+                      onClick={() => openAuthModal('mfa_status')}
+                      title="Two-Factor Authentication is Active with Google Authenticator — click for details"
+                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-xs font-semibold hover:bg-emerald-100 transition shadow-sm"
+                    >
+                      <HiShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                      <span className="hidden md:inline">2FA Active</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => openAuthModal('mfa_setup')}
+                      title="Click to set up Google Authenticator (TOTP)"
+                      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-800 text-xs font-semibold hover:bg-amber-100 dark:hover:bg-amber-900/50 transition shadow-sm"
+                    >
+                      <HiShieldCheck className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                      <span className="font-bold">Setup 2FA</span>
+                    </button>
+                  )}
+
+                  {/* Sign Out */}
                   <button
                     onClick={logout}
                     title="Sign Out"
